@@ -1,0 +1,7 @@
+{
+  "name": "Jiba Jaba CRM v2",
+  "description": "A clean, web-based CRM for commercial real-estate brokers. It manages contacts, records call notes (typed or dictated), tracks call outcomes, handles follow-ups through an internal Call List, and includes a fully functional Import Contacts feature.",
+  "requestFramePermissions": [
+    "microphone"
+  ]
+}

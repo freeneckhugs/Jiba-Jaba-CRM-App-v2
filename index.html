@@ -1,0 +1,124 @@
+<!DOCTYPE html>
+<html lang="en">
+  <head>
+    <meta charset="UTF-8" />
+    <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+    <title>Jiba Jaba CRM: Less Talk. More Action.</title>
+    <meta name="description" content="Session CRM helps brokers import contacts, record notes with voice dictation, and manage follow-ups through an in-app Call List and call-outcome tracker.">
+    <meta name="keywords" content="commercial real estate CRM, broker CRM, contact import CRM, call list, follow-up tracker, voice notes CRM, Gemini-optimized app">
+    <script src="https://cdn.tailwindcss.com"></script>
+    <script>
+      tailwind.config = {
+        theme: {
+          extend: {
+            colors: {
+              'brand-blue': '#007bff',
+              'brand-gray': {
+                light: '#e5e7eb',
+                medium: '#d1d5db',
+                dark: '#6b7280',
+              },
+              'brand-dark': '#222222',
+              'brand-orange': '#f59e0b',
+              'brand-red': '#ef4444',
+            }
+          }
+        }
+      }
+    </script>
+<style>
+      /* Custom scrollbar styles for a cleaner look */
+      /* For Webkit browsers (Chrome, Safari, Edge) */
+      ::-webkit-scrollbar {
+        width: 10px;
+        height: 10px;
+      }
+
+      ::-webkit-scrollbar-track {
+        background: #ffffff;
+      }
+
+      ::-webkit-scrollbar-thumb {
+        background-color: #d1d5db; /* brand-gray-medium */
+        border-radius: 5px;
+        border: 2px solid #ffffff; /* Creates a padding effect */
+      }
+
+      ::-webkit-scrollbar-thumb:hover {
+        background-color: #9ca3af; /* A slightly darker gray for hover */
+      }
+
+      /* For Firefox */
+      html {
+        scrollbar-width: thin;
+        scrollbar-color: #d1d5db #ffffff; /* thumb color track color */
+      }
+
+      /* Increase base font size on mobile for better readability */
+      @media (max-width: 768px) {
+        html {
+          /* Default browser font-size is 16px. Increasing it makes all rem units larger. */
+          font-size: 17px; 
+        }
+      }
+
+      /* Vertically center content in all buttons by default */
+      button {
+        display: inline-flex;
+        align-items: center;
+        justify-content: center;
+      }
+
+      /* Print-specific styles */
+      @media print {
+        body {
+          margin: 0;
+          padding: 1rem;
+          font-size: 10pt;
+          background-color: white;
+        }
+        
+        /* Hide all elements by default */
+        body * {
+          visibility: hidden;
+        }
+
+        /* Make only the print containers and their children visible */
+        .print-container, .print-container *,
+        #deal-flow-container, #deal-flow-container * {
+          visibility: visible;
+        }
+
+        /* Position the print containers at the top of the page */
+        .print-container, #deal-flow-container {
+          position: absolute;
+          left: 0;
+          top: 0;
+          width: 100%;
+        }
+
+        /* Ensure page breaks are handled gracefully */
+        .print-item {
+          break-inside: avoid;
+        }
+      }
+</style>
+<script type="importmap">
+{
+  "imports": {
+    "react": "https://aistudiocdn.com/react@^19.2.0",
+    "react-dom/": "https://aistudiocdn.com/react-dom@^19.2.0/",
+    "react/": "https://aistudiocdn.com/react@^19.2.0/",
+    "@google/genai": "https://aistudiocdn.com/@google/genai@^1.29.0",
+    "vite": "https://aistudiocdn.com/vite@^7.2.2",
+    "@vitejs/plugin-react": "https://aistudiocdn.com/@vitejs/plugin-react@^5.1.0",
+    "@capacitor/cli": "https://aistudiocdn.com/@capacitor/cli@^7.4.4"
+  }
+}
+</script>
+</head>
+  <body>
+    <div id="root"></div>
+    <script type="module" src="/index.tsx"></script>
+  </body>
+</html>
