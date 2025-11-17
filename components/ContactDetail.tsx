@@ -272,6 +272,9 @@ const ContactInfo: React.FC<{
 const NotesSection: React.FC<{ contact: Contact; onAddNote: (contactId: string, noteText: string) => void }> = ({ contact, onAddNote }) => {
     const { text, setText, startListening, stopListening, isListening, hasRecognitionSupport } = useSpeechRecognition();
     const textareaRef = useRef<HTMLTextAreaElement>(null);
+    const INITIAL_VISIBLE_NOTES = 5;
+    const NOTES_INCREMENT = 10;
+    const [visibleNotesCount, setVisibleNotesCount] = useState(INITIAL_VISIBLE_NOTES);
 
     const handleSaveNote = useCallback(() => {
         if (text.trim()) {
@@ -295,38 +298,49 @@ const NotesSection: React.FC<{ contact: Contact; onAddNote: (contactId: string, 
         return () => textarea?.removeEventListener('keydown', handleKeyDown);
     }, [handleSaveNote]);
 
+    useEffect(() => {
+        setVisibleNotesCount(INITIAL_VISIBLE_NOTES);
+    }, [contact.id]);
+
+    const notesToShow = contact.notes.slice(0, visibleNotesCount);
+    const hasMoreNotes = visibleNotesCount < contact.notes.length;
+
     return (
         <div className="bg-white p-6 rounded-lg h-full flex flex-col">
-            <h3 className="text-lg font-semibold text-brand-dark mb-4">Call Notes / Updates</h3>
-            <div className="relative flex flex-col">
-                <textarea
-                    ref={textareaRef}
-                    value={text}
-                    onChange={(e) => setText(e.target.value)}
-                    placeholder="Type your notes here... (Shift+Enter or Ctrl+Enter to save)"
-                    className="w-full h-32 p-3 border border-brand-gray-medium rounded-md resize-none bg-white text-brand-dark focus:ring-2 focus:ring-brand-blue focus:outline-none"
-                />
-                <div className="mt-3 flex items-center justify-between">
-                    {hasRecognitionSupport && (
-                        <button
-                            onClick={isListening ? stopListening : startListening}
-                            className={`p-2 rounded-full transition-colors ${isListening ? 'bg-red-100 text-brand-red' : 'bg-gray-100 text-brand-dark hover:bg-gray-200'}`}
-                        >
-                            {isListening ? <StopIcon className="w-5 h-5" /> : <MicrophoneIcon className="w-5 h-5" />}
-                        </button>
-                    )}
-                    <button
-                        onClick={handleSaveNote}
-                        className="px-5 py-2 bg-brand-blue text-white font-semibold rounded-md hover:bg-blue-600 focus:outline-none focus:ring-2 focus:ring-offset-2 focus:ring-brand-blue"
-                    >
-                        Save Note
-                    </button>
-                </div>
+            <div className="flex-shrink-0">
+              <h3 className="text-lg font-semibold text-brand-dark mb-4">Call Notes / Updates</h3>
+              <div className="relative flex flex-col">
+                  <textarea
+                      ref={textareaRef}
+                      value={text}
+                      onChange={(e) => setText(e.target.value)}
+                      placeholder="Type your notes here... (Shift+Enter or Ctrl+Enter to save)"
+                      className="w-full h-32 p-3 border border-brand-gray-medium rounded-md resize-none bg-white text-brand-dark focus:ring-2 focus:ring-brand-blue focus:outline-none"
+                  />
+                  <div className="mt-3 flex items-center justify-between">
+                      {hasRecognitionSupport && (
+                          <button
+                              onClick={isListening ? stopListening : startListening}
+                              className={`p-2 rounded-full transition-colors ${isListening ? 'bg-red-100 text-brand-red' : 'bg-gray-100 text-brand-dark hover:bg-gray-200'}`}
+                          >
+                              {isListening ? <StopIcon className="w-5 h-5" /> : <MicrophoneIcon className="w-5 h-5" />}
+                          </button>
+                      )}
+                      <button
+                          onClick={handleSaveNote}
+                          className="px-5 py-2 bg-brand-blue text-white font-semibold rounded-md hover:bg-blue-600 focus:outline-none focus:ring-2 focus:ring-offset-2 focus:ring-brand-blue"
+                      >
+                          Save Note
+                      </button>
+                  </div>
+              </div>
             </div>
-            <div className="mt-6 flex-grow overflow-y-auto min-h-0">
-                <h4 className="text-md font-semibold text-brand-dark mb-3">History</h4>
-                <div className="space-y-4 pr-2">
-                    {contact.notes.map((note) => (
+            
+            {/* This is the scrolling history section */}
+            <div className="mt-6 flex flex-col flex-grow min-h-0">
+                <h4 className="text-md font-semibold text-brand-dark mb-3 flex-shrink-0">History</h4>
+                <div className="space-y-4 pr-2 overflow-y-auto">
+                    {notesToShow.map((note) => (
                         <div key={note.id} className="text-sm">
                             <p className="text-brand-dark whitespace-pre-wrap">{note.text}</p>
                             <p className="text-xs text-brand-gray-dark mt-1">
@@ -335,6 +349,16 @@ const NotesSection: React.FC<{ contact: Contact; onAddNote: (contactId: string, 
                         </div>
                     ))}
                 </div>
+                {hasMoreNotes && (
+                    <div className="mt-4 flex-shrink-0">
+                        <button
+                            onClick={() => setVisibleNotesCount(prev => prev + NOTES_INCREMENT)}
+                            className="w-full text-center text-sm text-brand-blue hover:underline p-2 rounded-md hover:bg-blue-50"
+                        >
+                            See next 10 notes
+                        </button>
+                    </div>
+                )}
             </div>
         </div>
     );
@@ -480,7 +504,7 @@ const ContactDetail: React.FC<ContactDetailProps> = (props) => {
                         dealStages={dealStages}
                     />
                 </div>
-                <div className="md:col-span-2 lg:col-span-2">
+                <div className="md:col-span-2 lg:col-span-2 overflow-hidden">
                     <NotesSection contact={contact} onAddNote={props.onAddNote} />
                 </div>
                 <div className="md:col-span-3 lg:col-span-1">

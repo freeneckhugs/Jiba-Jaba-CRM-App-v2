@@ -71,6 +71,19 @@ const generateInitialContacts = (settings: AppSettings): Contact[] => {
         const hasDealStage = i < 40; // Put first 40 contacts into deal flow stages
         const dealStageIndex = hasDealStage ? Math.floor(i / 8) % settings.dealStages.length : -1;
 
+        let notes: Note[] = [];
+        if (name === 'John Doe #1') {
+            notes = Array.from({ length: 50 }, (_, j) => ({
+                id: `jd1-note-${j}`,
+                text: `This is historical note number ${j + 1} for John Doe. This note is here to test the scrolling functionality of the note history panel. Each note has slightly different text to make them unique.`,
+                timestamp: Date.now() - 86400000 * (j + 1), // spread notes out over 50 days
+                type: j % 5 === 0 ? 'outcome' : 'note', // mix up note types
+            }));
+        } else if (i % 3 === 0) {
+            notes = [{ id: `n${i}`, text: `Initial contact note for user #${i+1}.`, timestamp: Date.now() - 86400000 * i, type: 'note' }];
+        }
+
+
         return {
             id: `${i + 1}`,
             name: name,
@@ -82,7 +95,7 @@ const generateInitialContacts = (settings: AppSettings): Contact[] => {
             contactNote: i % 4 === 0 ? `This is the primary, persistent contact note for ${name}. It contains key at-a-glance info.` : undefined,
             subjectProperty: hasDealStage ? `123 Main St, Anytown #${i + 1}` : undefined,
             requirements: hasDealStage ? `Looking for 5,000 sqft warehouse space.` : undefined,
-            notes: i % 3 === 0 ? [{ id: `n${i}`, text: `Initial contact note for user #${i+1}.`, timestamp: Date.now() - 86400000 * i, type: 'note' }] : [],
+            notes,
             lastActivity: Date.now() - 86400000 * i,
         };
     });
