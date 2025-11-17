@@ -34,6 +34,33 @@ const getDefaultSettings = (): AppSettings => ({
   ],
 });
 
+const generateInitialFollowUps = (contacts: Contact[]): FollowUp[] => {
+    const followUps: FollowUp[] = [];
+    // Use contacts that are not in the initial deal flow for a cleaner demo
+    const contactsToUse = contacts.slice(50, 110); // Increased from 30 to 60
+
+    contactsToUse.forEach((contact, index) => {
+        const dueDate = new Date();
+        dueDate.setHours(0, 0, 0, 0);
+
+        if (index < 20) { // Overdue
+            dueDate.setDate(dueDate.getDate() - (index + 2)); 
+        } else if (index < 40) { // Upcoming soon
+            dueDate.setDate(dueDate.getDate() + (index - 20)); 
+        } else { // Further out
+            dueDate.setDate(dueDate.getDate() + (index - 20));
+        }
+
+        followUps.push({
+            contactId: contact.id,
+            dueDate: dueDate.getTime(),
+            completed: false,
+        });
+    });
+    return followUps;
+};
+
+
 const generateInitialContacts = (settings: AppSettings): Contact[] => {
     return Array.from({ length: 250 }, (_, i) => {
         const firstNames = ['John', 'Jane', 'Sam', 'Alice', 'Bob', 'Chris', 'Patty', 'Mike'];
@@ -41,6 +68,9 @@ const generateInitialContacts = (settings: AppSettings): Contact[] => {
         const companies = ['FSBO Corp', 'Property Management Inc.', 'SRE Solutions', 'Closing Funnel LLC', 'Research Partners', 'Global Real Estate', 'Tenant Finders', 'Investor Group'];
         const name = `${firstNames[i % firstNames.length]} ${lastNames[i % lastNames.length]} #${i + 1}`;
         
+        const hasDealStage = i < 40; // Put first 40 contacts into deal flow stages
+        const dealStageIndex = hasDealStage ? Math.floor(i / 8) % settings.dealStages.length : -1;
+
         return {
             id: `${i + 1}`,
             name: name,
@@ -48,8 +78,10 @@ const generateInitialContacts = (settings: AppSettings): Contact[] => {
             phone: `${Math.floor(100 + Math.random() * 900)}-555-${String(i + 1).padStart(4, '0')}`,
             email: `${name.replace(/ /g, '.').toLowerCase()}@example.com`,
             leadType: settings.leadTypes[i % settings.leadTypes.length]?.name,
-            dealStage: i % 5 === 0 ? settings.dealStages[i % settings.dealStages.length]?.name : undefined,
+            dealStage: hasDealStage ? settings.dealStages[dealStageIndex]?.name : undefined,
             contactNote: i % 4 === 0 ? `This is the primary, persistent contact note for ${name}. It contains key at-a-glance info.` : undefined,
+            subjectProperty: hasDealStage ? `123 Main St, Anytown #${i + 1}` : undefined,
+            requirements: hasDealStage ? `Looking for 5,000 sqft warehouse space.` : undefined,
             notes: i % 3 === 0 ? [{ id: `n${i}`, text: `Initial contact note for user #${i+1}.`, timestamp: Date.now() - 86400000 * i, type: 'note' }] : [],
             lastActivity: Date.now() - 86400000 * i,
         };
@@ -85,7 +117,7 @@ export const initializeData = () => {
     if (storedFollowUps) {
         dbFollowUps = JSON.parse(storedFollowUps);
     } else {
-        dbFollowUps = [];
+        dbFollowUps = generateInitialFollowUps(dbContacts);
         localStorage.setItem('crm_followups_v3_paged', JSON.stringify(dbFollowUps));
     }
 };
@@ -122,6 +154,15 @@ export const updateSettings = (newSettings: AppSettings): Promise<AppSettings> =
         }, SIMULATED_LATENCY);
     });
 };
+
+export const fetchAllContacts = (): Promise<Contact[]> => {
+    return new Promise(resolve => {
+        setTimeout(() => {
+            resolve(JSON.parse(JSON.stringify(dbContacts)));
+        }, SIMULATED_LATENCY / 2);
+    });
+};
+
 
 // --- API Functions ---
 
@@ -211,6 +252,16 @@ export const updateContact = (id: string, updatedData: Partial<Contact>): Promis
     });
 };
 
+export const updateAllContacts = (newContacts: Contact[]): Promise<void> => {
+    return new Promise(resolve => {
+        setTimeout(() => {
+            dbContacts = newContacts;
+            saveData();
+            resolve();
+        }, SIMULATED_LATENCY);
+    });
+};
+
 export const createContact = (newContactData: Partial<Contact>): Promise<Contact> => {
     return new Promise(resolve => {
         setTimeout(() => {
@@ -223,6 +274,8 @@ export const createContact = (newContactData: Partial<Contact>): Promise<Contact
                 leadType: newContactData.leadType,
                 dealStage: newContactData.dealStage,
                 contactNote: newContactData.contactNote,
+                subjectProperty: newContactData.subjectProperty,
+                requirements: newContactData.requirements,
                 notes: newContactData.notes || [],
                 lastActivity: Date.now(),
             };
@@ -320,7 +373,7 @@ export const fetchFollowUps = (): Promise<FollowUp[]> => {
     return new Promise(resolve => setTimeout(() => resolve([...dbFollowUps]), SIMULATED_LATENCY / 2));
 };
 
-export const scheduleFollowUp = (contactId: string, days: number | null): Promise<void> => {
+export const scheduleFollowUp = (contactId: string, days: number | null): Promise<FollowUp[]> => {
     return new Promise(resolve => {
         const existingIndex = dbFollowUps.findIndex(f => f.contactId === contactId);
         if (days === null) { // "Don't call again"
@@ -340,18 +393,18 @@ export const scheduleFollowUp = (contactId: string, days: number | null): Promis
             }
         }
         saveData();
-        resolve();
+        resolve([...dbFollowUps]);
     });
 };
 
-export const markFollowUpDone = (contactId: string): Promise<void> => {
+export const markFollowUpDone = (contactId: string): Promise<FollowUp[]> => {
     return new Promise(resolve => {
-        const index = dbFollowUps.findIndex(f => f.contactId === contactId);
+        const index = dbFollowUps.findIndex(f => f.contactId === contactId && !f.completed);
         if (index > -1) {
             dbFollowUps[index].completed = true;
             saveData();
         }
-        resolve();
+        resolve([...dbFollowUps]);
     });
 };
 

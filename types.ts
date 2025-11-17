@@ -22,6 +22,8 @@ export interface Contact {
   leadType?: string;
   dealStage?: string;
   contactNote?: string;
+  subjectProperty?: string;
+  requirements?: string;
   notes: Note[];
   lastActivity: number;
   snoozeUntil?: number;

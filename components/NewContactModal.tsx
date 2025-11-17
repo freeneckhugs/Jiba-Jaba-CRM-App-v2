@@ -1,4 +1,4 @@
-import React, { useState } from 'react';
+import React, { useState, useCallback } from 'react';
 import { Contact, CustomLeadType, CustomDealStage } from '../types';
 import { DEAL_STAGE_THEMES, LEAD_TYPE_THEMES } from '../constants';
 
@@ -16,6 +16,8 @@ const NewContactModal: React.FC<NewContactModalProps> = ({ onClose, onSave, lead
     phone: '',
     email: '',
     contactNote: '',
+    subjectProperty: '',
+    requirements: '',
     notes: [],
   });
   const [error, setError] = useState('');
@@ -37,14 +39,27 @@ const NewContactModal: React.FC<NewContactModalProps> = ({ onClose, onSave, lead
     setContactData(prev => ({ ...prev, dealStage: stageName }));
   };
 
-  const handleSave = () => {
+  const handleSave = useCallback(() => {
     if (!contactData.name || !contactData.name.trim()) {
       setError('Name is a required field.');
       return;
     }
     onSave(contactData);
     onClose();
-  };
+  }, [contactData, onClose, onSave]);
+
+  React.useEffect(() => {
+      const handleKeyDown = (e: KeyboardEvent) => {
+          if (e.key === 'Enter' && e.ctrlKey) {
+              e.preventDefault();
+              handleSave();
+          }
+      };
+      document.addEventListener('keydown', handleKeyDown);
+      return () => {
+          document.removeEventListener('keydown', handleKeyDown);
+      };
+  }, [handleSave]);
   
   const getDealStageStyle = (stage: CustomDealStage): string => {
     const theme = DEAL_STAGE_THEMES[stage.theme] || DEAL_STAGE_THEMES.gray;
@@ -92,7 +107,7 @@ const NewContactModal: React.FC<NewContactModalProps> = ({ onClose, onSave, lead
                     <button
                         key={type.id}
                         onClick={() => handleLeadTypeSelect(type.name)}
-                        className={`px-3 py-1.5 text-xs font-medium rounded-md border transition-colors ${getLeadTypeStyle(type)}`}
+                        className={`px-3 py-1.5 text-xs md:text-sm font-medium rounded-md border transition-colors ${getLeadTypeStyle(type)}`}
                     >
                         {type.name}
                     </button>
@@ -106,7 +121,7 @@ const NewContactModal: React.FC<NewContactModalProps> = ({ onClose, onSave, lead
                      <button
                         key={stage.id}
                         onClick={() => handleDealStageSelect(stage.name)}
-                        className={`px-3 py-1.5 text-xs font-semibold rounded-md border-2 transition-colors ${getDealStageStyle(stage)}`}
+                        className={`px-3 py-1.5 text-xs md:text-sm font-semibold rounded-md border-2 transition-colors ${getDealStageStyle(stage)}`}
                     >
                         {stage.name}
                     </button>
@@ -123,6 +138,30 @@ const NewContactModal: React.FC<NewContactModalProps> = ({ onClose, onSave, lead
               rows={3}
               className="mt-1 w-full p-2 border border-brand-gray-medium rounded-md bg-white text-brand-dark focus:ring-2 focus:ring-brand-blue"
               placeholder="A primary note for this contact..."
+            />
+          </div>
+           <div>
+            <label className="block text-sm font-medium text-brand-gray-dark" htmlFor="subjectProperty">Subject Property</label>
+            <textarea
+              id="subjectProperty"
+              name="subjectProperty"
+              value={contactData.subjectProperty}
+              onChange={handleChange}
+              rows={2}
+              className="mt-1 w-full p-2 border border-brand-gray-medium rounded-md bg-white text-brand-dark focus:ring-2 focus:ring-brand-blue"
+              placeholder="e.g., 123 Main St, Anytown, USA"
+            />
+          </div>
+           <div>
+            <label className="block text-sm font-medium text-brand-gray-dark" htmlFor="requirements">Requirements</label>
+            <textarea
+              id="requirements"
+              name="requirements"
+              value={contactData.requirements}
+              onChange={handleChange}
+              rows={3}
+              className="mt-1 w-full p-2 border border-brand-gray-medium rounded-md bg-white text-brand-dark focus:ring-2 focus:ring-brand-blue"
+              placeholder="e.g., Looking for 5,000 sqft warehouse space..."
             />
           </div>
           {error && <p className="text-red-500 text-sm">{error}</p>}

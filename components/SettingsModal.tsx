@@ -1,4 +1,4 @@
-import React, { useState, useEffect, useRef } from 'react';
+import React, { useState, useEffect, useRef, useCallback } from 'react';
 import { AppSettings, CustomLeadType, CustomDealStage, CustomCallOutcome } from '../types';
 import { DEAL_STAGE_THEMES, LEAD_TYPE_THEMES } from '../constants';
 import { DragHandleIcon, TrashIcon, XIcon } from './icons';
@@ -142,10 +142,23 @@ const SettingsModal: React.FC<SettingsModalProps> = ({ settings, onClose, onSave
     setLocalSettings(settingsCopy);
   };
   
-  const handleSaveSettings = () => {
+  const handleSaveSettings = useCallback(() => {
     onSave(localSettings);
     onClose();
-  };
+  }, [localSettings, onSave, onClose]);
+
+  useEffect(() => {
+      const handleKeyDown = (e: KeyboardEvent) => {
+          if (e.key === 'Enter' && e.ctrlKey) {
+              e.preventDefault();
+              handleSaveSettings();
+          }
+      };
+      document.addEventListener('keydown', handleKeyDown);
+      return () => {
+          document.removeEventListener('keydown', handleKeyDown);
+      };
+  }, [handleSaveSettings]);
 
   return (
     <div className="fixed inset-0 bg-black bg-opacity-50 flex items-center justify-center z-50 p-4">

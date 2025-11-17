@@ -1,5 +1,5 @@
 import React, { useState, useEffect, useRef, useCallback } from 'react';
-import { Contact, Note, CustomLeadType, CustomDealStage, CustomCallOutcome } from '../types';
+import { Contact, Note, CustomLeadType, CustomDealStage, CustomCallOutcome, View } from '../types';
 import { DEAL_STAGE_THEMES, LEAD_TYPE_THEMES } from '../constants';
 import { useSpeechRecognition } from '../hooks/useSpeechRecognition';
 import { MicrophoneIcon, StopIcon, ArrowLeftIcon, PencilIcon, TrashIcon } from './icons';
@@ -20,7 +20,71 @@ interface ContactDetailProps {
   upcomingFollowUpDate: number | null;
   onDeleteContact: (contactId: string, name: string) => void;
   setToast: (toast: { message: string; type?: ToastType; onConfirm?: () => void; confirmText?: string; dismissText?: string; }) => void;
+  viewBeforeContact: View;
 }
+
+const EditableField: React.FC<{
+  value: string;
+  onSave: (newValue: string) => void;
+  fieldName: string;
+  isTextArea?: boolean;
+}> = ({ value, onSave, fieldName, isTextArea = false }) => {
+  const [isEditing, setIsEditing] = useState(false);
+  const [currentValue, setCurrentValue] = useState(value);
+  const inputRef = useRef<HTMLInputElement | HTMLTextAreaElement>(null);
+
+  useEffect(() => {
+    setCurrentValue(value);
+  }, [value]);
+
+  useEffect(() => {
+    if (isEditing) {
+      inputRef.current?.focus();
+    }
+  }, [isEditing]);
+
+  const handleSave = () => {
+    if (currentValue.trim() !== value.trim()) {
+      onSave(currentValue);
+    }
+    setIsEditing(false);
+  };
+  
+  const handleKeyDown = (e: React.KeyboardEvent<HTMLInputElement | HTMLTextAreaElement>) => {
+    if (e.key === 'Enter' && !e.shiftKey) {
+        e.preventDefault();
+        handleSave();
+    }
+    if (e.key === 'Escape') {
+        setCurrentValue(value);
+        setIsEditing(false);
+    }
+  };
+
+  const commonProps = {
+    ref: inputRef as any,
+    value: currentValue,
+    onChange: (e: React.ChangeEvent<HTMLInputElement | HTMLTextAreaElement>) => setCurrentValue(e.target.value),
+    onBlur: handleSave,
+    onKeyDown: handleKeyDown,
+    className: "text-sm text-brand-dark p-2 bg-gray-50 border rounded-md w-full focus:ring-2 focus:ring-brand-blue focus:outline-none"
+  };
+
+  if (isEditing) {
+    return isTextArea ? (
+      <textarea {...commonProps} rows={4}></textarea>
+    ) : (
+      <input type="text" {...commonProps} />
+    );
+  }
+
+  return (
+    <div onClick={() => setIsEditing(true)} className="text-sm text-brand-dark p-2 bg-gray-50 border border-transparent hover:border-brand-gray-medium rounded-md cursor-pointer min-h-[40px] whitespace-pre-wrap">
+      {value || <span className="text-brand-gray-dark italic">Click to edit...</span>}
+    </div>
+  );
+};
+
 
 const ContactInfo: React.FC<{ 
     contact: Contact;
@@ -30,9 +94,8 @@ const ContactInfo: React.FC<{
     onUpdateLeadType: (contactId: string, leadType: string) => void;
     onUpdateDealStage: (contactId: string, dealStage: string) => void;
     onDeleteContact: (contactId: string, name: string) => void;
-    onAddNote: (contactId: string, noteText: string) => void;
     setToast: (toast: { message: string; type?: ToastType; onConfirm?: () => void; confirmText?: string, dismissText?: string; }) => void;
-}> = ({ contact, leadTypes, dealStages, onUpdateContact, onUpdateLeadType, onUpdateDealStage, onDeleteContact, onAddNote, setToast }) => {
+}> = ({ contact, leadTypes, dealStages, onUpdateContact, onUpdateLeadType, onUpdateDealStage, onDeleteContact, setToast }) => {
   const [isEditing, setIsEditing] = useState(false);
   const [editedContact, setEditedContact] = useState(contact);
 
@@ -44,15 +107,31 @@ const ContactInfo: React.FC<{
     setEditedContact({ ...editedContact, [e.target.name]: e.target.value });
   };
   
-  const handleSave = () => {
+  const handleSave = useCallback(() => {
     onUpdateContact({ ...editedContact, lastActivity: Date.now() });
     setIsEditing(false);
-  };
+  }, [editedContact, onUpdateContact]);
   
   const handleCancel = () => {
     setEditedContact(contact);
     setIsEditing(false);
   };
+
+  useEffect(() => {
+    if (!isEditing) return;
+
+    const handleKeyDown = (e: KeyboardEvent) => {
+        if (e.key === 'Enter' && e.ctrlKey) {
+            e.preventDefault();
+            handleSave();
+        }
+    };
+    
+    document.addEventListener('keydown', handleKeyDown);
+    return () => {
+        document.removeEventListener('keydown', handleKeyDown);
+    };
+  }, [isEditing, handleSave]);
 
   const handleDelete = () => {
     setToast({
@@ -110,18 +189,6 @@ const ContactInfo: React.FC<{
                 <label className="block text-sm font-medium text-brand-gray-dark" htmlFor="edit-email">Email</label>
                 <input type="email" id="edit-email" name="email" value={editedContact.email} onChange={handleEditChange} className="mt-1 w-full p-2 border border-brand-gray-medium rounded-md bg-white text-brand-dark focus:ring-2 focus:ring-brand-blue" />
             </div>
-            <div>
-                <label className="block text-sm font-medium text-brand-gray-dark" htmlFor="edit-contactNote">Contact Notes</label>
-                <textarea 
-                    id="edit-contactNote" 
-                    name="contactNote"
-                    value={editedContact.contactNote || ''}
-                    onChange={handleEditChange}
-                    rows={3}
-                    className="mt-1 w-full p-2 border border-brand-gray-medium rounded-md bg-white text-brand-dark focus:ring-2 focus:ring-brand-blue"
-                    placeholder="Add a primary note for this contact..."
-                />
-            </div>
             <div className="flex space-x-2 pt-2">
                 <button onClick={handleSave} className="px-4 py-2 bg-brand-blue text-white rounded-md hover:bg-blue-600">Save</button>
                 <button onClick={handleCancel} className="px-4 py-2 bg-gray-200 text-brand-dark rounded-md hover:bg-gray-300">Cancel</button>
@@ -133,11 +200,37 @@ const ContactInfo: React.FC<{
             <a href={`tel:${contact.phone}`} className="text-brand-blue font-medium mb-1 hover:underline block">{contact.phone}</a>
             <a href={`mailto:${contact.email}`} className="text-brand-blue mb-4 hover:underline block">{contact.email}</a>
             
-            {contact.contactNote && (
-                <div className="mb-4 p-3 bg-yellow-50 border border-yellow-200 rounded-md">
-                    <p className="text-sm text-yellow-800 whitespace-pre-wrap">{contact.contactNote}</p>
+            <div className="space-y-4 mb-6">
+                 <div>
+                    <h3 className="text-sm font-semibold text-brand-gray-dark uppercase tracking-wide mb-1">Contact Note</h3>
+                    <EditableField
+                      value={contact.contactNote || ''}
+                      onSave={(newValue) => onUpdateContact({ contactNote: newValue, lastActivity: Date.now() })}
+                      fieldName="contactNote"
+                      isTextArea
+                    />
+                  </div>
+
+                <div>
+                  <h3 className="text-sm font-semibold text-brand-gray-dark uppercase tracking-wide mb-1">Subject Property</h3>
+                  <EditableField
+                    value={contact.subjectProperty || ''}
+                    onSave={(newValue) => onUpdateContact({ subjectProperty: newValue, lastActivity: Date.now() })}
+                    fieldName="subjectProperty"
+                    isTextArea
+                  />
                 </div>
-            )}
+              
+                <div>
+                  <h3 className="text-sm font-semibold text-brand-gray-dark uppercase tracking-wide mb-1">Requirements</h3>
+                  <EditableField
+                    value={contact.requirements || ''}
+                    onSave={(newValue) => onUpdateContact({ requirements: newValue, lastActivity: Date.now() })}
+                    fieldName="requirements"
+                    isTextArea
+                  />
+                </div>
+            </div>
             
             <div className="space-y-6">
                  <div>
@@ -147,7 +240,7 @@ const ContactInfo: React.FC<{
                             <button
                                 key={type.id}
                                 onClick={() => onUpdateLeadType(contact.id, type.name)}
-                                className={`px-3 py-1.5 text-xs font-medium rounded-md border transition-colors ${getLeadTypeStyle(type)}`}
+                                className={`px-3 py-1.5 text-xs md:text-sm font-medium rounded-md border transition-colors ${getLeadTypeStyle(type)}`}
                             >
                                 {type.name}
                             </button>
@@ -162,7 +255,7 @@ const ContactInfo: React.FC<{
                             <button
                                 key={stage.id}
                                 onClick={() => onUpdateDealStage(contact.id, stage.name)}
-                                className={`px-3 py-1.5 text-xs font-semibold rounded-md border-2 transition-colors ${getDealStageStyle(stage)}`}
+                                className={`px-3 py-1.5 text-xs md:text-sm font-semibold rounded-md border-2 transition-colors ${getDealStageStyle(stage)}`}
                             >
                                 {stage.name}
                             </button>
@@ -192,7 +285,7 @@ const NotesSection: React.FC<{ contact: Contact; onAddNote: (contactId: string, 
 
     useEffect(() => {
         const handleKeyDown = (e: KeyboardEvent) => {
-            if (e.key === 'Enter' && e.shiftKey) {
+            if (e.key === 'Enter' && (e.shiftKey || e.ctrlKey)) {
                 e.preventDefault();
                 handleSaveNote();
             }
@@ -205,12 +298,12 @@ const NotesSection: React.FC<{ contact: Contact; onAddNote: (contactId: string, 
     return (
         <div className="bg-white p-6 rounded-lg h-full flex flex-col">
             <h3 className="text-lg font-semibold text-brand-dark mb-4">Call Notes / Updates</h3>
-            <div className="relative flex-grow flex flex-col">
+            <div className="relative flex flex-col">
                 <textarea
                     ref={textareaRef}
                     value={text}
                     onChange={(e) => setText(e.target.value)}
-                    placeholder="Type your notes here... (Shift+Enter to save)"
+                    placeholder="Type your notes here... (Shift+Enter or Ctrl+Enter to save)"
                     className="w-full h-32 p-3 border border-brand-gray-medium rounded-md resize-none bg-white text-brand-dark focus:ring-2 focus:ring-brand-blue focus:outline-none"
                 />
                 <div className="mt-3 flex items-center justify-between">
@@ -230,9 +323,9 @@ const NotesSection: React.FC<{ contact: Contact; onAddNote: (contactId: string, 
                     </button>
                 </div>
             </div>
-            <div className="mt-6 flex-grow overflow-y-auto">
+            <div className="mt-6 flex-grow overflow-y-auto min-h-0">
                 <h4 className="text-md font-semibold text-brand-dark mb-3">History</h4>
-                <div className="space-y-4">
+                <div className="space-y-4 pr-2">
                     {contact.notes.map((note) => (
                         <div key={note.id} className="text-sm">
                             <p className="text-brand-dark whitespace-pre-wrap">{note.text}</p>
@@ -351,7 +444,7 @@ const AgendaSection: React.FC<{
                 <button 
                     onClick={() => handleOneClickUpdateAction(() => onScheduleFollowUp(contactId, null, 'followup-dont-call'))}
                     disabled={oneClickUpdateDisabled}
-                    className={`w-full mt-4 px-2 py-1.5 md:px-3 md:py-2 text-sm bg-red-400 text-white rounded-md hover:bg-red-500 transition-colors ${disabledClasses}`}
+                    className={`w-full mt-4 px-2 py-1.5 md:px-3 md:py-2 text-sm bg-brand-red text-white rounded-md hover:bg-red-600 transition-colors ${disabledClasses}`}
                 >
                     Don't call again
                 </button>
@@ -362,13 +455,17 @@ const AgendaSection: React.FC<{
 
 
 const ContactDetail: React.FC<ContactDetailProps> = (props) => {
-    const { contact, onBack, onDeleteContact, onUpdateLeadType, onUpdateDealStage, setToast, leadTypes, dealStages, callOutcomes } = props;
+    const { contact, onBack, onDeleteContact, onUpdateLeadType, onUpdateDealStage, setToast, leadTypes, dealStages, callOutcomes, viewBeforeContact } = props;
+
+    const backText = viewBeforeContact === 'dealflow' ? 'Back to Deal Flow' 
+                   : viewBeforeContact === 'dashboard' ? 'Back to Follow Up' 
+                   : 'Back to List';
 
     return (
         <div className="bg-gray-50 min-h-full p-4 md:p-6 lg:p-8">
             <button onClick={onBack} className="flex items-center space-x-2 text-brand-blue hover:underline mb-6 md:hidden">
                 <ArrowLeftIcon className="w-5 h-5"/>
-                <span>Back to List</span>
+                <span>{backText}</span>
             </button>
             <div className="grid grid-cols-1 md:grid-cols-3 lg:grid-cols-4 gap-6">
                 <div className="md:col-span-1 lg:col-span-1 space-y-6">
@@ -378,7 +475,6 @@ const ContactDetail: React.FC<ContactDetailProps> = (props) => {
                         onUpdateLeadType={onUpdateLeadType}
                         onUpdateDealStage={onUpdateDealStage}
                         onDeleteContact={onDeleteContact}
-                        onAddNote={props.onAddNote}
                         setToast={setToast}
                         leadTypes={leadTypes}
                         dealStages={dealStages}
